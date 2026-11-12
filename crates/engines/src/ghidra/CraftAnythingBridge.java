@@ -25,6 +25,7 @@ import ghidra.app.util.PseudoInstruction;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.program.model.lang.OperandType;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
@@ -252,6 +253,7 @@ public class CraftAnythingBridge extends GhidraScript {
         Listing listing = currentProgram.getListing();
         Set<Address> seen = new HashSet<>();
         int tx = currentProgram.startTransaction("Craft Anything: bound jump tables");
+        boolean done = false;
         try {
             // Each round can add code with more tables in it; a few rounds cover real functions.
             for (int round = 0; round < 16 && !limit.isCancelled(); round++) {
@@ -286,11 +288,12 @@ public class CraftAnythingBridge extends GhidraScript {
                 if (!grew) break;
                 CreateFunctionCmd.fixupFunctionBody(currentProgram, f, limit);
             }
+            done = true;
         } catch (Exception e) {
-            // Best effort: the decompile goes ahead as it would have without it.
+            // Best effort: everything is undone and the decompile goes ahead as it would have.
             println("Craft Anything: couldn't bound the jump tables in " + f.getName() + ": " + safe(e.getMessage()));
         } finally {
-            currentProgram.endTransaction(tx, true);
+            currentProgram.endTransaction(tx, done);
         }
     }
 
@@ -305,39 +308,56 @@ public class CraftAnythingBridge extends GhidraScript {
         }
     }
 
-    // Walks back from `jmp reg` to the `movsxd [table + index*4]`, the `lea` of the table and the
-    // `movzx` of a byte index, a dozen instructions at most. A conditional jump or an `and` among
-    // them, or among the two before the `movzx`, is a guard.
+    // Walks back from `jmp reg` to the `movsxd [base + index*4]`, the `lea` that sets `base` to the
+    // table and the `movzx` of a byte into `index`, then two instructions further. A guard bounds
+    // that index: an `and` of it, or a `cmp` of it (or of the byte it was loaded from) followed by a
+    // conditional jump. Other instructions in between, other conditional jumps too, aren't guards.
     private Dispatch dispatchBefore(Instruction jmp) {
         Listing listing = currentProgram.getListing();
+        Register base = null;
+        Register index = null;
         Address table = null;
-        boolean entry = false;
+        String loadedFrom = null;
+        boolean jumpAfter = false;
         boolean guarded = false;
-        boolean index = false;
+        int further = -1;
         Instruction i = jmp;
-        for (int n = 0; n < 14; n++) {
+        for (int n = 0; n < 20 && further != 0; n++) {
+            if (further > 0) further--;
             i = listing.getInstructionBefore(i.getAddress());
-            if (i == null) return null;
+            if (i == null) break;
             FlowType flow = i.getFlowType();
-            if (flow.isCall() || flow.isTerminal() || (flow.isJump() && !flow.isConditional())) return null;
-            if (flow.isConditional() || "AND".equals(i.getMnemonicString())) guarded = true;
+            if (flow.isCall() || flow.isTerminal() || (flow.isJump() && !flow.isConditional())) break;
+            if (flow.isConditional()) {
+                jumpAfter = true;
+                continue;
+            }
             String m = i.getMnemonicString();
-            String text = i.toString();
-            if (!entry && "MOVSXD".equals(m) && text.contains("*0x4]")) entry = true;
-            else if (entry && table == null && "LEA".equals(m)) {
+            if (base == null) {
+                if ("MOVSXD".equals(m) && i.toString().contains("*0x4]")) {
+                    List<Register> regs = new ArrayList<>();
+                    for (Object o : i.getOpObjects(1)) {
+                        if (o instanceof Register r) regs.add(r.getBaseRegister());
+                    }
+                    if (regs.size() != 2) return null;
+                    base = regs.get(0);
+                    index = regs.get(1);
+                }
+                continue;
+            }
+            Register written = i.getRegister(0) == null ? null : i.getRegister(0).getBaseRegister();
+            if (table == null && "LEA".equals(m) && base.equals(written)) {
                 table = leaTarget(i);
                 if (table == null) return null;
-            } else if (entry && "MOVZX".equals(m) && text.contains("byte ptr")) {
-                index = true;
-                break;
+            } else if (loadedFrom == null) {
+                if (("AND".equals(m) || ("CMP".equals(m) && jumpAfter)) && index.equals(written)) guarded = true;
+                if ("MOVZX".equals(m) && index.equals(written) && i.toString().contains("byte ptr")) loadedFrom = i.getDefaultOperandRepresentation(1);
+            } else if ("CMP".equals(m) && jumpAfter && loadedFrom.equals(i.getDefaultOperandRepresentation(0))) {
+                guarded = true;
             }
+            if (table != null && loadedFrom != null && further < 0) further = 2;
         }
-        if (table == null || !index) return null;
-        for (int n = 0; n < 2 && i != null; n++) {
-            i = listing.getInstructionBefore(i.getAddress());
-            if (i != null && (i.getFlowType().isConditional() || "CMP".equals(i.getMnemonicString()))) guarded = true;
-        }
-        return new Dispatch(table, guarded);
+        return table != null && loadedFrom != null ? new Dispatch(table, guarded) : null;
     }
 
     // The table's targets: an entry is the target's offset from the table. The table ends where

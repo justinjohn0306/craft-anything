@@ -616,27 +616,48 @@ fn tiny_elf(base: u64, e_type: u8, start: u64, data: &[u8]) -> Vec<u8> {
 
 /// Two functions that each jump on a byte through a table of offsets with no bounds check, the
 /// tables back to back (as Rust's async state machines lay them out, #1715): read past its three
-/// entries, `first`'s table runs into the second's. Returns the program and `first`.
-fn unguarded_jump_tables_elf() -> (Vec<u8>, u64) {
+/// entries, `first`'s table runs into the second's. `first` also has a conditional jump that
+/// bounds nothing before its dispatch, and loads another address between the table's `lea` and
+/// the entry's read. `third` checks its byte first (`cmp`, `ja`), so its table is left to Ghidra.
+/// Returns the program, `first` and `third`.
+fn unguarded_jump_tables_elf() -> (Vec<u8>, u64, u64) {
     let base = 0x40_0000u64;
-    let (first, second, table1, table2) = (0x110usize, 0x140usize, 0x1000usize, 0x100cusize);
+    let (first, second, third, table1, table2, table3) = (0x110usize, 0x140usize, 0x160usize, 0x1000usize, 0x100cusize, 0x1014usize);
+    let lea = |code: &mut Vec<u8>, f: usize, reg: u8, to: usize| {
+        code.extend([0x48, 0x8d, reg]);
+        code.extend((to as i32 - (f + code.len() + 4) as i32).to_le_bytes());
+    };
+    let mut codes = Vec::new();
     let mut data = Vec::new();
-    for (table, cases) in [(table1, &[0x123usize, 0x129, 0x12f][..]), (table2, &[0x153, 0x159])] {
-        data.extend(cases.iter().flat_map(|c| (*c as i32 - table as i32).to_le_bytes()));
+    for (f, table, cases, noise) in [(first, table1, &[11u8, 22, 33][..], true), (second, table2, &[44, 55], false), (third, table3, &[66, 77], false)] {
+        let mut code = Vec::new();
+        if noise {
+            code.extend([0x85, 0xf6, 0x75, 0x00]); // test esi,esi; jne (next): bounds nothing
+        }
+        code.extend([0x0f, 0xb6, 0x07]); // movzx eax,byte [rdi]
+        if f == third {
+            code.extend([0x83, 0xf8, 0x01, 0x77, 0x1c]); // cmp eax,1; ja (the ret after the cases)
+        }
+        lea(&mut code, f, 0x0d, table); // lea rcx,[rip+table]
+        if noise {
+            lea(&mut code, f, 0x15, table2); // lea rdx,[rip+table2]: another address on the way
+        }
+        code.extend([0x48, 0x63, 0x04, 0x81, 0x48, 0x01, 0xc8, 0xff, 0xe0]); // movsxd rax,[rcx+rax*4]; add rax,rcx; jmp rax
+        for v in cases {
+            data.extend(((f + code.len()) as i32 - table as i32).to_le_bytes());
+            code.extend([0xb8, *v, 0, 0, 0, 0xc3]); // mov eax,v; ret
+        }
+        code.push(0xc3);
+        codes.push((f, code));
     }
     data.extend([0u8; 8]);
     let mut b = tiny_elf(base, 2, base + 0x100, &data);
-    b[0x100..0x160].fill(0xcc);
-    put(&mut b, 0x100, &[0xe8, 0x0b, 0, 0, 0, 0xe8, 0x36, 0, 0, 0, 0xc3]); // start: call first; call second; ret
-    for (f, table, cases) in [(first, table1, &[11u8, 22, 33][..]), (second, table2, &[44, 55])] {
-        let disp = (table as i32 - (f as i32 + 10)).to_le_bytes();
-        // movzx eax,byte [rdi]; lea rcx,[rip+table]; movsxd rax,dword [rcx+rax*4]; add rax,rcx; jmp rax
-        put(&mut b, f, &[0x0f, 0xb6, 0x07, 0x48, 0x8d, 0x0d, disp[0], disp[1], disp[2], disp[3], 0x48, 0x63, 0x04, 0x81, 0x48, 0x01, 0xc8, 0xff, 0xe0]);
-        for (k, v) in cases.iter().enumerate() {
-            put(&mut b, f + 0x13 + k * 6, &[0xb8, *v, 0, 0, 0, 0xc3]); // mov eax,v; ret
-        }
+    b[0x100..0x1a0].fill(0xcc);
+    put(&mut b, 0x100, &[0xe8, 0x0b, 0, 0, 0, 0xe8, 0x36, 0, 0, 0, 0xe8, 0x51, 0, 0, 0, 0xc3]); // start: call first, second, third; ret
+    for (f, code) in codes {
+        put(&mut b, f, &code);
     }
-    (b, base + first as u64)
+    (b, base + first as u64, base + third as u64)
 }
 
 /// Real Ghidra, only where `CRAFT_ANYTHING_TEST_GHIDRA` names the engine store holding `ghidra/`
@@ -729,10 +750,12 @@ fn live_ghidra_bounds_a_jump_table_with_no_bounds_check() {
         compiler_spec: None,
         memory_gb: Some(4),
     };
-    let (elf, first) = unguarded_jump_tables_elf();
+    let (elf, first, third) = unguarded_jump_tables_elf();
     let session = Session::start(&cfg, &elf, &craft_anything_evidence::sha256_hex(&elf), &"ab".repeat(32), &|| false, &|_, _| {}).expect("Ghidra starts");
     let c = session.decompile(first, &|_| {}).unwrap().expect("an answer").pseudocode.unwrap_or_default();
     assert!(c.contains("manually overridden") && c.contains("0x21") && !c.contains("0x2c") && !c.contains("case 3"), "{c}");
+    let guarded = session.decompile(third, &|_| {}).unwrap().expect("an answer").pseudocode.unwrap_or_default();
+    assert!(!guarded.contains("manually overridden") && guarded.contains("0x4d"), "a guarded table is Ghidra's own: {guarded}");
 }
 
 #[test]
