@@ -733,6 +733,9 @@ Owner: open · Status: in progress
       at 15 min)", or that it waits for another decompile to finish. The builder's tool server
       writes the line to `inbox/activity/`, which the run reads into the feed. Unit-tested; not run
       with Ghidra — claimed: justinjohn0306, branch `feature/r1.5-decompile-wait-in-feed`
+- [ ] Bound unguarded jump tables when Ghidra decompiles a function (#1715): with no bounds check it
+      reads up to 256 entries, follows targets inside other functions and the decompile grows
+      without end — claimed: justinjohn0306, branch `bugfix/r1.5-bound-unguarded-jump-tables`
 - [ ] More pins once their hashes are checked against the publisher: Chromium (no published
       checksums found yet), Rizin for Linux (the tar.xz unpacks to ~800 MB, so it needs streaming
       extraction) and macOS (a .pkg)
