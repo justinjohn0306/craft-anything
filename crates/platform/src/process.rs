@@ -1244,9 +1244,8 @@ impl Launched {
                 return true;
             }
             let Some(child) = st.child.as_mut() else { return false };
-            if child.start_kill().is_err() {
-                return false;
-            }
+            // A program that just ended refuses the kill: the wait below says how it ended.
+            let _ = child.start_kill();
         }
         let ended = self.wait_timeout(REAP_GRACE).is_some();
         if !ended {
