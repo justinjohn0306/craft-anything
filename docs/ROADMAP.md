@@ -376,8 +376,11 @@ Every round spends the person's money or quota. One that can't do anything shoul
       — claimed: justinjohn0306, branch bugfix/r5.3-stopped-program-wait
 - [ ] Confirm on a reporter's Windows machine that #1438 / #981 no longer sit at a check (their
       `build-activity.log` after the stall, and whether "still there 5 s after it was stopped" is
-      in the app's log). `Launched::stop` (Play) and the console capture still use the same
-      unlimited `kill()`
+      in the app's log)
+- [ ] `Launched::stop` (Play's Stop) still uses the library's `kill()`, which waits with no limit,
+      and then waits again, holding the lock its watcher and `is_running` take (the console
+      capture's `kill()` is portable-pty's, which doesn't wait) — claimed: justinjohn0306, branch
+      `bugfix/r5.3-play-stop-bounded`
 
 ### R5.4 Local models can build
 Owner: open · Status: todo
