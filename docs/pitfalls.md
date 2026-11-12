@@ -450,6 +450,13 @@ with `create_new` in `ghidra-cache/`, which only existed on machines that had us
 fresh store the create failed and the loop read that as "someone else holds it" until the
 deadline. Create a lock's folder first, and treat any error but "already exists" as a failure.
 
+**A bound read from an analysis that never saw the code.** Ghidra's unguarded jump tables were
+first ended at the next address something refers to; a hand-made ELF passed, but in a real Rust
+program the code holding the next table's `lea` is reached only through the table being bounded,
+so it was never disassembled, nothing referred to the next table and the bound took all 256
+entries. When a fix leans on what an analysis found, ask whether the thing being fixed is why it
+found nothing, and run it on a real program, not only on one built for the test.
+
 **A bridge that didn't compile.** A helper in the Ghidra bridge was named like a public
 `GhidraScript` method, so Ghidra refused the script and the run only said the bridge stopped.
 Compile the `.java` against Ghidra's jars (`javac -proc:none -cp <Ghidra/**/lib/*.jar>`) before a

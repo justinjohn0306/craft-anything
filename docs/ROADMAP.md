@@ -733,9 +733,13 @@ Owner: open · Status: in progress
       at 15 min)", or that it waits for another decompile to finish. The builder's tool server
       writes the line to `inbox/activity/`, which the run reads into the feed. Unit-tested; not run
       with Ghidra — claimed: justinjohn0306, branch `feature/r1.5-decompile-wait-in-feed`
-- [ ] Bound unguarded jump tables when Ghidra decompiles a function (#1715): with no bounds check it
+- [x] Bound unguarded jump tables when Ghidra decompiles a function (#1715): with no bounds check it
       reads up to 256 entries, follows targets inside other functions and the decompile grows
-      without end — claimed: justinjohn0306, branch `bugfix/r1.5-bound-unguarded-jump-tables`
+      without end. Before a decompile the bridge finds a byte-indexed table with no guard, decodes
+      the function's stretch (its `.pdata` entry on Windows) in a row, ends the table where another
+      starts or at the first entry that isn't an instruction start there, and writes the override.
+      Live on Ghidra 12.1.4: a Rust async function that timed out after 15 min decompiles in 16 s
+      (121 tables) — claimed: justinjohn0306, branch `bugfix/r1.5-bound-unguarded-jump-tables`
 - [ ] More pins once their hashes are checked against the publisher: Chromium (no published
       checksums found yet), Rizin for Linux (the tar.xz unpacks to ~800 MB, so it needs streaming
       extraction) and macOS (a .pkg)
