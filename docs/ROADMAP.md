@@ -377,9 +377,11 @@ Every round spends the person's money or quota. One that can't do anything shoul
 - [ ] Confirm on a reporter's Windows machine that #1438 / #981 no longer sit at a check (their
       `build-activity.log` after the stall, and whether "still there 5 s after it was stopped" is
       in the app's log)
-- [ ] `Launched::stop` (Play's Stop) still uses the library's `kill()`, which waits with no limit,
-      and then waits again, holding the lock its watcher and `is_running` take (the console
-      capture's `kill()` is portable-pty's, which doesn't wait) — claimed: justinjohn0306, branch
+- [x] `Launched::stop` (Play's Stop) used the library's `kill()`, which waits with no limit,
+      and then waited again, holding the lock its watcher and `is_running` take. It now sends the
+      stop under the lock and waits outside it, 5 s at most, as other runs do (the console
+      capture's `kill()` is portable-pty's, which doesn't wait). Not reproduced: no program here
+      outlives its stop — claimed: justinjohn0306, branch
       `bugfix/r5.3-play-stop-bounded`
 
 ### R5.4 Local models can build
