@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	os arquivos dessa pasta são o apl
 {name} builds what you make; answers come from {brain}.	{name} cria seus projetos; as respostas vêm de {brain}.
 {name} can't be attached: a message takes pictures up to 20 MB.	Não é possível anexar {name}: cada imagem deve ter no máximo 20 MB.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	Não é possível anexar {name}: o arquivo precisa ser uma imagem PNG, JPEG, GIF ou WebP.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} não pode ser limitado a só ler, então não recebe perguntas. Pergunte com o Claude Code ou com uma IA que tenha chave de API.
 {name} is ready	Pronto para usar: {name}
 {name} is ready.	Pronto para usar: {name}.
 {name} isn't available yet in this build.	{name} ainda não está disponível nesta versão.

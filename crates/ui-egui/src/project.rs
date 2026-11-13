@@ -1834,7 +1834,7 @@ fn composer(app: &mut CraftApp, ui: &mut Ui, width: f32, t: &Tokens, last_waitin
     }
     let pausing = running && open_root.is_some_and(|r| app.pausing.contains(&r));
     let hint = if app.state.just_ask {
-        tr("Ask about the build, e.g. \"where are the latest files?\" Nothing changes and no build starts.")
+        cannot_answer(app).unwrap_or_else(|| tr("Ask about the build, e.g. \"where are the latest files?\" Nothing changes and no build starts."))
     } else if running {
         tr("Add more info. The builder reads it at its next step.")
     } else {
@@ -1912,6 +1912,10 @@ fn composer(app: &mut CraftApp, ui: &mut Ui, width: f32, t: &Tokens, last_waitin
 fn send_or_ask(app: &mut CraftApp) {
     match crate::just_ask::question_in(&app.state.project_input, app.state.just_ask) {
         Ok(Some(q)) => {
+            // It stays in the box: the project's builder can't answer it (#1695).
+            if let Some(why) = cannot_answer(app) {
+                return app.toast(why, true);
+            }
             app.state.project_input.clear();
             app.ask_about_build(q);
         }
@@ -1919,6 +1923,17 @@ fn send_or_ask(app: &mut CraftApp) {
         // It stays in the box to be fixed.
         Err(why) => app.toast(why, true),
     }
+}
+
+/// Why a question about the open project won't be answered: its builder is an agent that can't be
+/// held to reading. Said before it's sent, not after (#1695).
+fn cannot_answer(app: &CraftApp) -> Option<String> {
+    let ws = app.workspace.as_ref()?;
+    let b = rebuild::question::cannot_answer(&app.backends, ws.manifest.builder.as_deref(), app.builder.as_deref())?;
+    Some(trf(
+        "{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.",
+        &[("name", &b.name)],
+    ))
 }
 
 /// Under the prompt box: what sending does (ask for a change, or just ask about the build), and

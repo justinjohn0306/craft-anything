@@ -1387,6 +1387,7 @@ Zoom	მასშტაბი
 {name} builds what you make; answers come from {brain}.	{name} აწყობს იმას, რასაც ქმნით; პასუხები მოდის {brain}-ისგან.
 {name} can't be attached: a message takes pictures up to 20 MB.	{name}-ის მიმაგრება შეუძლებელია: შეტყობინება იღებს სურათებს 20 MB-მდე.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	{name}-ის მიმაგრება შეუძლებელია: ის PNG, JPEG, GIF ან WebP სურათი არ არის.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name}-ის მხოლოდ კითხვით შეზღუდვა შეუძლებელია, ამიტომ მას კითხვებს არ ვუსვამთ. იკითხეთ Claude Code-ით ან AI-ით, რომელსაც API გასაღები აქვს.
 {name} is ready	{name} მზადაა
 {name} is ready.	{name} მზადაა.
 {name} isn't available yet in this build.	{name} ამ აწყობაში ჯერ მიუწვდომელია.

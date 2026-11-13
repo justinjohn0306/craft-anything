@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	oradaki dosyalarınız uygulamanı
 {name} builds what you make; answers come from {brain}.	Yaptıklarınızı {name} derler; yanıtlar {brain} kaynağından gelir.
 {name} can't be attached: a message takes pictures up to 20 MB.	{name} eklenemiyor: bir mesaj en fazla 20 MB resim alır.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	{name} eklenemiyor: PNG, JPEG, GIF veya WebP resmi değil.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} yalnızca okumayla sınırlanamıyor, bu yüzden ona soru sorulmuyor. Claude Code ile ya da API anahtarı olan bir yapay zekâ ile sorun.
 {name} is ready	{name} hazır
 {name} is ready.	{name} hazır.
 {name} isn't available yet in this build.	{name} bu derlemede henüz kullanılamıyor.

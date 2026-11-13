@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	该位置的文件就是应用，�
 {name} builds what you make; answers come from {brain}.	由 {name} 负责构建，{brain} 负责回答。
 {name} can't be attached: a message takes pictures up to 20 MB.	无法附加 {name}:消息中的图片最大为 20 MB。
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	无法附加 {name}:它不是 PNG、JPEG、GIF 或 WebP 图片。
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} 无法被限制为只读，因此不会向它提问。请改用 Claude Code，或使用带 API 密钥的 AI 提问。
 {name} is ready	{name} 已就绪
 {name} is ready.	{name} 已就绪。
 {name} isn't available yet in this build.	此版本尚未提供{name}。

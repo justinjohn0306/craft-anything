@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	tus archivos de ahí son la app, e
 {name} builds what you make; answers come from {brain}.	{name} construye lo que haces; las respuestas vienen de {brain}.
 {name} can't be attached: a message takes pictures up to 20 MB.	No se puede adjuntar {name}: un mensaje admite imágenes de hasta 20 MB.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	No se puede adjuntar {name}: no es una imagen PNG, JPEG, GIF o WebP.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} no se puede limitar a solo leer, así que no se le hacen preguntas. Pregunta con Claude Code o con una IA que tenga clave de API.
 {name} is ready	{name} está listo
 {name} is ready.	{name} está listo.
 {name} isn't available yet in this build.	{name} aún no está disponible en esta construcción.

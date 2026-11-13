@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	vaše soubory ve složce jsou apli
 {name} builds what you make; answers come from {brain}.	{name} sestavuje vaše výtvory; odpovědi poskytuje {brain}.
 {name} can't be attached: a message takes pictures up to 20 MB.	{name} nelze přiložit: zpráva přijímá obrázky do 20 MB.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	{name} nelze přiložit: není to obrázek PNG, JPEG, GIF ani WebP.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} nelze omezit jen na čtení, proto se mu otázky nekladou. Zeptejte se přes Claude Code nebo přes AI s klíčem API.
 {name} is ready	Připraveno: {name}
 {name} is ready.	Připraveno: {name}.
 {name} isn't available yet in this build.	V tomto sestavení zatím chybí: {name}.

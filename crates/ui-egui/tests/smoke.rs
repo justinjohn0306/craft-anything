@@ -859,6 +859,33 @@ fn a_question_about_the_build_is_answered_without_building() {
     assert!(!h.state().runs.is_busy(&root));
 }
 
+/// #1695: a project built by an agent that isn't asked questions (Codex) says so before a question
+/// is sent, and the question stays in the box.
+#[test]
+fn a_question_the_builder_cannot_answer_is_refused_before_it_is_sent() {
+    use craft_anything_engine::workspace::{TargetRef, Workspace};
+    let d = tempfile::tempdir().unwrap();
+    let mut ws = Workspace::create(d.path(), "Snake", "A snake game", TargetRef::None).unwrap();
+    ws.manifest.builder = Some("Codex".into());
+    let root = ws.root.clone();
+    let mut h = harness(move || {
+        let mut a = demo::app(demo::engine(Mode::Beginner, true));
+        a.backends =
+            vec![BackendConfig { name: "Codex".into(), kind: BackendKind::AgentCli, model: "codex".into(), base_url: None, ssh_host: None, enabled: true }];
+        a.workspace = Some(ws);
+        a.state.screen = Screen::Project;
+        a
+    });
+    h.run_steps(2);
+    h.state_mut().state.project_input = "/btw where are the latest files".into();
+    h.run_steps(1);
+    h.get_by_label("Send (Enter)").click();
+    h.run_steps(2);
+    assert!(h.state().state.toasts.iter().any(|(t, err)| *err && t.starts_with("Codex can't be kept to only reading")), "{:?}", h.state().state.toasts);
+    assert_eq!(h.state().state.project_input, "/btw where are the latest files", "it stays in the box");
+    assert!(h.state().asked.get(&root).is_none_or(Vec::is_empty), "nothing was asked");
+}
+
 #[test]
 fn a_long_answer_scrolls_with_the_conversation_and_comes_back_after_a_restart() {
     use craft_anything_engine::questions::{self, AskedQuestion};

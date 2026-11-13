@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	các tệp của bạn ở đó ch
 {name} builds what you make; answers come from {brain}.	{name} xây dựng thứ bạn tạo; câu trả lời đến từ {brain}.
 {name} can't be attached: a message takes pictures up to 20 MB.	Không thể đính kèm {name}: mỗi tin nhắn nhận ảnh tối đa 20 MB.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	Không thể đính kèm {name}: đây không phải ảnh PNG, JPEG, GIF hoặc WebP.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} không thể bị giới hạn chỉ đọc, nên không được hỏi. Hãy hỏi bằng Claude Code hoặc bằng một AI có khóa API.
 {name} is ready	{name} đã sẵn sàng
 {name} is ready.	{name} đã sẵn sàng.
 {name} isn't available yet in this build.	{name} chưa có trong bản dựng này.

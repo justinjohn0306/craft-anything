@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	ไฟล์ของคุณท�
 {name} builds what you make; answers come from {brain}.	{name} สร้างสิ่งที่คุณทำ คำตอบมาจาก {brain}
 {name} can't be attached: a message takes pictures up to 20 MB.	แนบ {name} ไม่ได้: ข้อความรับรูปสูงสุด 20 MB
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	แนบ {name} ไม่ได้: ไม่ใช่รูป PNG, JPEG, GIF หรือ WebP
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} จำกัดให้อ่านอย่างเดียวไม่ได้ จึงไม่ถูกถามคำถาม ถามด้วย Claude Code หรือ AI ที่มีคีย์ API แทน
 {name} is ready	{name} พร้อมแล้ว
 {name} is ready.	{name} พร้อมแล้ว
 {name} isn't available yet in this build.	{name} ยังใช้ไม่ได้ในบิลด์นี้

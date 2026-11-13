@@ -1366,6 +1366,7 @@ your files there are the app, edited in place	sinu failid seal on rakendus, mida
 {name} builds what you make; answers come from {brain}.	{name} ehitab selle, mida lood; vastused tulevad allikast {brain}.
 {name} can't be attached: a message takes pictures up to 20 MB.	{name} ei saa manustada: sõnum võtab pilte kuni 20 MB.
 {name} can't be attached: it isn't a PNG, JPEG, GIF or WebP picture.	{name} ei saa manustada: see pole PNG-, JPEG-, GIF- ega WebP-pilt.
+{name} can't be kept to only reading, so it isn't asked questions. Ask with Claude Code, or with an AI that has an API key.	{name} ei saa piirata ainult lugemisega, seega talt küsimusi ei küsita. Küsi Claude Code'iga või AI-ga, millel on API-võti.
 {name} is ready	{name} on valmis
 {name} is ready.	{name} on valmis.
 {name} isn't available yet in this build.	{name} pole selles ehituses veel saadaval.
