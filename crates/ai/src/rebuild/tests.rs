@@ -1476,7 +1476,8 @@ fn other_pages_of_the_same_site_are_picked_from_its_links() {
     let d = tempfile::tempdir().unwrap();
     let ws = Workspace::create(d.path(), "Shop", "Clone it", TargetRef::Website { url: "https://shop.example.com/".into() }).unwrap();
     let cx = |ws| BriefCx { ws, deep: false, ghidra: false, editor: None, assets: false, image_model: None, sees_pictures: true };
-    assert!(kinds::WebsiteKind.brief_sections(&cx(&ws)).is_empty());
+    // #1590: and it always says how to run the site without Craft Anything.
+    assert_eq!(kinds::WebsiteKind.brief_sections(&cx(&ws)), [kinds::website::HOW_TO_RUN]);
     std::fs::create_dir_all(ws.capture_dir()).unwrap();
     std::fs::write(ws.capture_dir().join(ROUTES_FILE), serde_json::to_vec(&r).unwrap()).unwrap();
     assert_eq!(routes(&ws).len(), 4);
@@ -4051,6 +4052,9 @@ fn a_persons_own_project_is_asked_for_nothing_it_would_add_for_our_sake() {
         assert!(!b.contains("--screenshot") && !b.contains("--self-test") && !b.contains("MECHANICS.md"), "{k}: {b}");
         assert!(b.contains("its own build and tests") && !b.contains(kind(k).goal()), "{k}: {b}");
     }
+    let (_d, site) = own_folder("index.html", Edit);
+    let b = brief(&site, "website", false, false, None, false, None);
+    assert!(!b.contains(kinds::website::HOW_TO_RUN), "their own site keeps its own README: {b}");
     own.manifest.stack = "Unity".into();
     let b = brief(&own, "game", false, false, Some(Path::new("/x/Unity")), false, None);
     assert!(!b.contains("CraftBuild") && b.contains("keep to what the project already uses") && b.contains("/x/Unity"), "{b}");

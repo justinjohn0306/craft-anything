@@ -1599,7 +1599,7 @@ Gaps found while using the app for real projects.
       holding it) isn't tried again, so the whole session runs on defaults and refuses every save:
       try the read again for a short while before giving up
       — claimed: NicolasBohn, branch bugfix/r2.9-config-read-retry
-- [ ] A website build has no `dev` or `start` script, since Craft Anything serves its built
+- [x] A website build has no `dev` or `start` script, since Craft Anything serves its built
       folder itself, so outside the app there was nothing to run (#1590): the builder writes
       app/README.md saying how to build it and which folder to serve
       — claimed: justinjohn0306, branch bugfix/r2.9-site-readme-how-to-run
