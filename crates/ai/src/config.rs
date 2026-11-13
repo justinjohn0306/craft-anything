@@ -105,7 +105,8 @@ impl ToolList {
 #[serde(default)]
 pub struct BackendOptions {
     /// Thinking depth (`low`/`medium`/`high`/`xhigh`/`max`) for the Claude API and Claude Code;
-    /// `high` unless set. A model without the level gets the nearest one below it.
+    /// `high` unless set. A model without the level gets the nearest one below it. For an
+    /// OpenAI-style API, `none` to `xhigh`, sent as its reasoning level only when set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effort: Option<Effort>,
     /// Anthropic server-side fallbacks (default on).

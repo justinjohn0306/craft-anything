@@ -426,8 +426,9 @@ fn ai(app: &mut CraftApp, ui: &mut Ui) {
                         }
                         ui.add_space(4.0);
                     }
-                    // How hard it thinks: the Claude API and Claude Code take every Claude level.
+                    // How hard it thinks: every Claude level for Claude, OpenAI's for the OpenAI-style APIs.
                     let effort = craft_anything_ai::effort_in_use(b, app.backend_options.get(&b.name));
+                    let effort_levels = craft_anything_ai::effort_levels(b);
                     if b.kind == BackendKind::AgentCli && b.ssh_host.as_deref().is_some_and(|h| !h.trim().is_empty()) {
                         let id = egui::Id::new(("remote-agent-program", &b.name));
                         let mut program = ui
@@ -513,11 +514,14 @@ fn ai(app: &mut CraftApp, ui: &mut Ui) {
                                     }
                                 }
                             }
-                            if let Some(current) = effort {
+                            if !effort_levels.is_empty() {
                                 ui.label(RichText::new(tr("Effort:")).color(t.text_faint).size(theme::CAPTION));
-                                egui::ComboBox::from_id_salt(("effort", &b.name)).icon(widgets::combo_icon).selected_text(current.as_str()).show_ui(ui, |ui| {
-                                    for e in craft_anything_ai::Effort::ALL {
-                                        if ui.selectable_label(e == current, e.as_str()).clicked() && e != current {
+                                let shown = effort.map_or("default", craft_anything_ai::Effort::as_str);
+                                egui::ComboBox::from_id_salt(("effort", &b.name)).icon(widgets::combo_icon).selected_text(shown).show_ui(ui, |ui| {
+                                    // Claude always has a level; an OpenAI-style API is sent none until one is chosen.
+                                    let unset = (effort_levels != craft_anything_ai::Effort::ALL).then_some(None);
+                                    for e in unset.into_iter().chain(effort_levels.iter().map(|&e| Some(e))) {
+                                        if ui.selectable_label(e == effort, e.map_or("default", craft_anything_ai::Effort::as_str)).clicked() && e != effort {
                                             chosen_effort = Some((b.name.clone(), e));
                                         }
                                     }

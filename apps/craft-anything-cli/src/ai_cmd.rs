@@ -91,8 +91,9 @@ pub enum AiCommand {
         #[arg(long, conflicts_with_all = ["model", "thinking"])]
         default: bool,
     },
-    /// Set how hard a Claude backend thinks (the Claude API or Claude Code): low, medium, high,
-    /// xhigh or max, or `default` for the usual level; leave it out to see the level and choices.
+    /// Set how hard a backend thinks: low, medium, high, xhigh or max for the Claude API or Claude
+    /// Code; none, minimal, low, medium, high or xhigh for an OpenAI-style API, which is sent no
+    /// level until one is set. `default` goes back to the usual; leave it out to see the choices.
     Effort { name: String, level: Option<String> },
     /// Send a tiny request and report latency.
     Test { name: String },
@@ -374,16 +375,18 @@ pub fn ai(cli: &Cli, c: &AiCommand, f: Format) -> u8 {
                 return fail(&ToolError::invalid(format!("No AI backend named {name:?}")).with_remediation("See `craft-anything-cli ai list`."), f);
             };
             let options = hub.options();
-            match craft_anything_ai::effort_in_use(&b, options.get(name)) {
-                Some(effort) => {
-                    let levels: Vec<&str> = Effort::ALL.iter().map(|e| e.as_str()).collect();
-                    emit(&json!({"name": name, "effort": effort.as_str(), "levels": levels}), f);
-                    0
-                }
-                None => fail(
-                    &ToolError::invalid(format!("{name} doesn't take an effort level.")).with_remediation("Effort is for the Claude API and Claude Code."),
+            match craft_anything_ai::effort_levels(&b) {
+                [] => fail(
+                    &ToolError::invalid(format!("{name} doesn't take an effort level."))
+                        .with_remediation("Effort is for the Claude API, Claude Code and OpenAI-style APIs."),
                     f,
                 ),
+                levels => {
+                    let effort = craft_anything_ai::effort_in_use(&b, options.get(name)).map_or("default", Effort::as_str);
+                    let levels: Vec<&str> = levels.iter().map(|e| e.as_str()).collect();
+                    emit(&json!({"name": name, "effort": effort, "levels": levels}), f);
+                    0
+                }
             }
         }
         AiCommand::Effort { name, level: Some(level) } => {
@@ -392,7 +395,8 @@ pub fn ai(cli: &Cli, c: &AiCommand, f: Format) -> u8 {
                 l => match Effort::parse(l) {
                     Some(e) => Some(e),
                     None => {
-                        let e = ToolError::invalid(format!("{l:?} isn't an effort level.")).with_remediation("Use low, medium, high, xhigh, max or default.");
+                        let e = ToolError::invalid(format!("{l:?} isn't an effort level."))
+                            .with_remediation("Use none, minimal, low, medium, high, xhigh, max or default.");
                         return fail(&e, f);
                     }
                 },

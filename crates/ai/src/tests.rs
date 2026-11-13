@@ -681,6 +681,39 @@ fn a_claude_ais_effort_is_changed() {
     assert!(!h.set_effort("Nobody", Some(Effort::Low)).unwrap());
 }
 
+/// #1813: an OpenAI-style API is sent a reasoning level only once the person chooses one, and
+/// only one of OpenAI's levels; OpenRouter gets it in its own field.
+#[test]
+fn an_openai_style_ais_effort_is_sent_only_once_chosen() {
+    use crate::model::{Msg, Stop, TurnRequest};
+    let reply = || (200, "text/event-stream", chat_sse(&[json!({"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]})]));
+    for (kind, field) in [(BackendKind::OpenaiCompatible, "/reasoning_effort"), (BackendKind::Openrouter, "/reasoning/effort")] {
+        let (h, _d) = hub();
+        let (url, seen) = mock(vec![reply(), reply()]);
+        let config = BackendConfig { name: "Box".into(), kind, model: "m".into(), base_url: Some(url), ssh_host: None, enabled: true };
+        h.add_backend(config, Some("k".into())).unwrap();
+        let ask = |h: &AiHub| {
+            let mut slot = h.build_model(&h.entry("Box").unwrap()).unwrap();
+            let messages = [Msg::user_text("hi")];
+            let request = TurnRequest { system: "S", messages: &messages, tools: &[], effort: prompt::choose_effort(slot.effort), max_tokens: 100 };
+            slot.model.turn(&request, &mut |_| {}, &Stop::default()).unwrap();
+        };
+        let effort = |h: &AiHub| crate::effort_in_use(&h.entry("Box").unwrap().config, h.options().get("Box"));
+        assert_eq!(effort(&h), None, "nothing is sent until it's chosen");
+        ask(&h);
+        assert!(h.set_effort("Box", Some(Effort::Max)).is_err(), "max isn't one of OpenAI's levels");
+        assert!(h.set_effort("Box", Some(Effort::Minimal)).unwrap());
+        assert_eq!(effort(&h), Some(Effort::Minimal));
+        ask(&h);
+        let seen = seen.lock().unwrap();
+        assert!(seen[0].body.get("reasoning_effort").is_none() && seen[0].body.get("reasoning").is_none(), "{}", seen[0].body);
+        assert_eq!(seen[1].body.pointer(field), Some(&json!("minimal")), "{}", seen[1].body);
+        drop(seen);
+        assert!(h.set_effort("Box", None).unwrap());
+        assert_eq!(effort(&h), None);
+    }
+}
+
 #[test]
 fn copilot_uses_shared_selection_and_rejects_failed_discovery_without_saving() {
     let (hub, _directory) = hub();

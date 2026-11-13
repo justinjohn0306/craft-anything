@@ -203,15 +203,30 @@ fn opencode_go_models_base(base: &str) -> String {
     }
 }
 
-/// The effort an AI thinks at, when it can be chosen (Settings → AI): the Claude API and Claude
-/// Code, which take every level in [`Effort::ALL`]. `None` for the others, which don't use it.
+/// The reasoning levels OpenAI's API takes, which OpenAI-compatible services follow.
+pub const OPENAI_EFFORTS: [Effort; 6] = [Effort::None, Effort::Minimal, Effort::Low, Effort::Medium, Effort::High, Effort::Xhigh];
+
+/// The effort levels an AI can be set to (Settings → AI): every Claude level for the Claude API
+/// and Claude Code, OpenAI's for the OpenAI-style APIs (#1813), none for the others.
+pub fn effort_levels(config: &BackendConfig) -> &'static [Effort] {
+    match config.kind {
+        BackendKind::Anthropic => &Effort::ALL,
+        BackendKind::AgentCli if config.model == "claude-code" => &Effort::ALL,
+        BackendKind::Openai | BackendKind::Openrouter | BackendKind::Gemini | BackendKind::OpenaiCompatible => &OPENAI_EFFORTS,
+        BackendKind::AgentCli => &[],
+    }
+}
+
+/// The effort an AI thinks at: for Claude, the chosen level or high; for an OpenAI-style API,
+/// the chosen level, since not every model there takes one, so nothing is sent until it's
+/// chosen. `None` when no level is sent.
 pub fn effort_in_use(config: &BackendConfig, options: Option<&BackendOptions>) -> Option<Effort> {
-    let claude = match config.kind {
-        BackendKind::Anthropic => true,
-        BackendKind::AgentCli => config.model == "claude-code",
-        _ => false,
-    };
-    claude.then(|| prompt::choose_effort(options.and_then(|o| o.effort)))
+    let chosen = options.and_then(|o| o.effort);
+    match effort_levels(config) {
+        [] => None,
+        levels if levels == Effort::ALL => Some(prompt::choose_effort(chosen)),
+        levels => chosen.filter(|e| levels.contains(e)),
+    }
 }
 
 /// The model an AI uses, when it can be chosen (Settings → AI, #123): an API's own, or the one
@@ -753,13 +768,18 @@ impl AiHub {
         Ok(true)
     }
 
-    /// How hard a backend thinks (`None`: the usual level again). Only the Claude API and Claude
-    /// Code take one ([`effort_in_use`]). Returns false when there was no such backend.
+    /// How hard a backend thinks (`None`: the usual level again). Only the levels in
+    /// [`effort_levels`] are taken. Returns false when there was no such backend.
     pub fn set_effort(&self, name: &str, effort: Option<Effort>) -> Result<bool, ToolError> {
         let mut cfg = self.config_to_change()?;
         let Some(b) = cfg.backends.iter_mut().find(|b| b.config.name == name) else { return Ok(false) };
-        if effort.is_some() && effort_in_use(&b.config, Some(&b.options)).is_none() {
-            return Err(ToolError::invalid(format!("{name} doesn't take an effort level.")).with_remediation("Effort is for the Claude API and Claude Code."));
+        let levels = effort_levels(&b.config);
+        if let Some(e) = effort.filter(|e| !levels.contains(e)) {
+            let fix = match levels {
+                [] => "Effort is for the Claude API, Claude Code and OpenAI-style APIs.".to_string(),
+                levels => format!("Use one of: {}.", levels.iter().map(|l| l.as_str()).collect::<Vec<_>>().join(", ")),
+            };
+            return Err(ToolError::invalid(format!("{name} doesn't take the effort level {}.", e.as_str())).with_remediation(fix));
         }
         b.options.effort = effort;
         self.save_config(&cfg)?;
@@ -1001,8 +1021,10 @@ impl AiHub {
         // large context and a bill, as any other cloud API (#374).
         let local = c.kind == BackendKind::OpenaiCompatible && base.is_none_or(detect::on_this_network);
         let limit = stream_limit(&e.options);
+        let sends_effort = effort_in_use(c, Some(&e.options)).is_some();
         let with_limit = |mut o: openai::OpenAi| {
             o.stream_limit = limit;
+            o.sends_effort = sends_effort;
             Box::new(o) as Box<dyn ChatModel>
         };
         let model: Box<dyn ChatModel> = match c.kind {

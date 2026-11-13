@@ -1517,6 +1517,42 @@ fn a_claude_ais_effort_is_set_in_settings() {
     h.get_by_value("max");
 }
 
+/// #1813: an OpenAI-compatible AI has an effort setting too, showing "default" (nothing sent)
+/// until a level is chosen, and back again.
+#[test]
+fn an_openai_compatible_ais_effort_is_set_in_settings() {
+    use craft_anything_ai::{BackendConfig, BackendKind, Effort};
+    let mut h = harness(|| {
+        let a = demo::app(demo::engine(Mode::Experienced, true));
+        let cfg = BackendConfig {
+            name: "Box".into(),
+            kind: BackendKind::OpenaiCompatible,
+            model: "m".into(),
+            base_url: Some("http://127.0.0.1:0/v1".into()),
+            ssh_host: None,
+            enabled: true,
+        };
+        a.hub.add_backend(cfg, None).unwrap();
+        a
+    });
+    h.state_mut().refresh_backends();
+    assert!(wait(&mut h, |a| a.backends.iter().any(|b| b.name == "Box")));
+    h.state_mut().state.settings_open = true;
+    h.state_mut().state.settings_tab = craft_anything_ui_egui::state::SettingsTab::Ai;
+    h.run_steps(2);
+    h.get_by_label("Effort:");
+    h.get_by_value("default").click();
+    h.run();
+    assert!(h.query_by_label("max").is_none(), "only OpenAI's levels");
+    h.get_by_label("xhigh").click();
+    assert!(wait(&mut h, |a| a.backend_options.get("Box").and_then(|o| o.effort) == Some(Effort::Xhigh)));
+    h.run_steps(2);
+    h.get_by_value("xhigh").click();
+    h.run();
+    h.get_by_label("default").click();
+    assert!(wait(&mut h, |a| a.backend_options.get("Box").and_then(|o| o.effort).is_none()));
+}
+
 /// The picker exposes only the chosen model's depths and clears an old depth when changing models.
 #[test]
 fn opencode_picker_offers_only_the_selected_models_thinking_depths() {

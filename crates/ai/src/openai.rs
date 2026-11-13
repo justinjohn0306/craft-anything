@@ -80,6 +80,9 @@ pub struct OpenAi {
     pub asks_window: bool,
     /// The longest answer to ask for, once OpenRouter has said the key can't afford more (#1213).
     pub answer_cap: Option<u64>,
+    /// Send the request's effort as the reasoning level: only once the person chose one, since
+    /// a model that doesn't reason may refuse the field (#1813).
+    pub sends_effort: bool,
     /// A server on this computer or its network, asked for its window in its own ways too; any
     /// other is asked only through its model list.
     pub on_this_network: bool,
@@ -118,6 +121,7 @@ impl OpenAi {
             openrouter: false,
             stream_limit: None,
             answer_cap: None,
+            sends_effort: false,
             asks_window: false,
             on_this_network: false,
         }
@@ -175,6 +179,14 @@ impl OpenAi {
         });
         if let (Some(cap), Some(o)) = (self.answer_cap, body.as_object_mut()) {
             o.insert("max_tokens".into(), json!(cap));
+        }
+        if let (true, Some(o)) = (self.sends_effort, body.as_object_mut()) {
+            // OpenRouter's own field, which it maps to each provider's.
+            if self.openrouter {
+                o.insert("reasoning".into(), json!({"effort": req.effort.as_str()}));
+            } else {
+                o.insert("reasoning_effort".into(), json!(req.effort.as_str()));
+            }
         }
         if !self.react
             && !req.tools.is_empty()

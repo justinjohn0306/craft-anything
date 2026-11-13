@@ -1609,7 +1609,7 @@ Gaps found while using the app for real projects.
       folder itself, so outside the app there was nothing to run (#1590): the builder writes
       app/README.md saying how to build it and which folder to serve
       — claimed: justinjohn0306, branch bugfix/r2.9-site-readme-how-to-run
-- [ ] An OpenAI-compatible, OpenAI, OpenRouter or Gemini AI has no effort setting, and nothing asks it
+- [x] An OpenAI-compatible, OpenAI, OpenRouter or Gemini AI has no effort setting, and nothing asks it
       to think harder (#1813): Settings → AI and `ai effort` offer its reasoning levels, sent
       only once the person picks one
       — claimed: justinjohn0306, branch bugfix/r2.9-api-reasoning-effort
