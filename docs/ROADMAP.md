@@ -1148,6 +1148,10 @@ Owner: open · Status: in progress
 - [x] Codex's and Grok Build's `config.toml` keep their Windows line endings when setup adds or
       removes our entry.
       — claimed: Plastic-time, branch bugfix/r2.2-toml-config-crlf
+- [ ] "Just ask" says before a question is sent when the project's builder can't answer
+      questions (Codex, OpenCode and the other agents that can't be held to reading), and which
+      AIs can, instead of refusing only after it's sent (#1695)
+      — claimed: justinjohn0306, branch bugfix/r2.2-just-ask-says-first
 
 ### R2.4 Runtime study for apps and games (with consent)
 Owner: maintainers · Status: in progress
