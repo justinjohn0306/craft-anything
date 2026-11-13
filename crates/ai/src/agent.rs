@@ -473,8 +473,6 @@ impl AgentLoop {
         if let Some(text) = text {
             context::push_user_text(&mut self.history, text);
         }
-        let configured = self.chain.get(self.current).and_then(|s| s.effort);
-        let effort = prompt::choose_effort(configured);
         let max_turns = self.chain.get(self.current).map(|s| s.max_turns).unwrap_or(DEFAULT_MAX_TURNS).max(1);
         let mut msg_usage = Usage::default();
         let mut msg_cost: Option<f64> = Some(0.0);
@@ -496,7 +494,7 @@ impl AgentLoop {
             turns += 1;
             // Ask the server for its window before choosing the tools, so Auto chooses from it.
             self.ask_window();
-            let Some(result) = self.one_turn(effort, &mut msg_usage, &mut msg_cost) else { break };
+            let Some(result) = self.one_turn(&mut msg_usage, &mut msg_cost) else { break };
             self.last_input = result.usage.input_tokens + result.usage.cache_read_tokens + result.usage.cache_write_tokens;
             self.last_history_estimate = context::estimate_tokens(&self.history).max(1);
             let (slot_name, local, model_id) = match self.chain.get(self.current) {
@@ -516,7 +514,7 @@ impl AgentLoop {
                     "backend": slot_name, "model": model_id, "input_tokens": result.usage.input_tokens,
                     "output_tokens": result.usage.output_tokens, "cache_read_tokens": result.usage.cache_read_tokens,
                     "cache_write_tokens": result.usage.cache_write_tokens, "cost_usd": cost, "stop_reason": result.stop.as_str(),
-                    "effort": effort.as_str(),
+                    "effort": self.effort().as_str(),
                 }),
             );
             let uses = result.message.tool_uses();
@@ -721,8 +719,14 @@ impl AgentLoop {
         (self.system.clone().unwrap_or_default(), self.tool_defs())
     }
 
+    /// The effort the chain position in use was set to: a fallback is sent its own, not the
+    /// failed backend's (an OpenAI-style API would refuse Claude's `max`, #1813).
+    fn effort(&self) -> Effort {
+        prompt::choose_effort(self.chain.get(self.current).and_then(|s| s.effort))
+    }
+
     /// One model call, falling back along the chain when a backend fails before producing output.
-    fn one_turn(&mut self, effort: Effort, msg_usage: &mut Usage, msg_cost: &mut Option<f64>) -> Option<crate::model::TurnResult> {
+    fn one_turn(&mut self, msg_usage: &mut Usage, msg_cost: &mut Option<f64>) -> Option<crate::model::TurnResult> {
         // Chain positions already fitted to a window their server reported: each is asked once more.
         let mut refitted = BTreeSet::new();
         loop {
@@ -742,7 +746,7 @@ impl AgentLoop {
             let events = self.events.clone();
             let mut produced = false;
             let stop = self.stop.clone();
-            let req = TurnRequest { system, messages: &self.history, tools, effort, max_tokens: crate::anthropic::MAX_TOKENS };
+            let req = TurnRequest { system, messages: &self.history, tools, effort: self.effort(), max_tokens: crate::anthropic::MAX_TOKENS };
             let slot = self.chain.get_mut(self.current)?;
             let r = slot.model.turn(
                 &req,
@@ -2253,6 +2257,55 @@ pub(crate) mod tests {
         let ev = drain_until_done(&mut c, |_, _| {});
         assert!(ev.iter().any(|e| matches!(e, AgentEvent::TextDelta { text } if text == "ok")));
         assert!(!c.is_busy() || c.poll().is_empty());
+    }
+
+    /// A fallback is sent the effort it was set to, not the failed backend's (#1813: Claude's
+    /// `max` would reach an OpenAI-style API that refuses it).
+    #[test]
+    fn a_fallback_is_sent_its_own_effort() {
+        struct Efforts {
+            reply: Result<TurnResult, ToolError>,
+            seen: Arc<Mutex<Vec<Effort>>>,
+        }
+        impl ChatModel for Efforts {
+            fn turn(&mut self, req: &TurnRequest<'_>, _: &mut dyn FnMut(Delta), _: &Stop) -> Result<TurnResult, ToolError> {
+                self.seen.lock().unwrap().push(req.effort);
+                self.reply.clone()
+            }
+            fn model(&self) -> String {
+                "efforts".into()
+            }
+        }
+        let host = Arc::new(FakeHost { calls: Mutex::default(), journal: Mutex::default() });
+        let (first, second) = (Arc::default(), Arc::default());
+        let failing = Efforts { reply: Err(ToolError::new(ErrorCode::EngineMissing, "down")), seen: Arc::clone(&first) };
+        let answering = Efforts { reply: turn(vec![Block::Text { text: "ok".into() }], StopReason::EndTurn), seen: Arc::clone(&second) };
+        let chain = vec![
+            ModelSlot {
+                name: "A".into(),
+                model: Box::new(failing),
+                local: false,
+                effort: Some(Effort::Max),
+                max_turns: 5,
+                context_tokens: 0,
+                tools: Default::default(),
+            },
+            ModelSlot {
+                name: "B".into(),
+                model: Box::new(answering),
+                local: false,
+                effort: Some(Effort::Minimal),
+                max_turns: 5,
+                context_tokens: 0,
+                tools: Default::default(),
+            },
+        ];
+        let mut c = ApiConversation::start(host, chain, LoopConfig::default()).unwrap();
+        c.send("q");
+        let ev = drain_until_done(&mut c, |_, _| {});
+        assert!(matches!(ev.last(), Some(AgentEvent::TurnDone { backend, .. }) if backend == "B"));
+        assert_eq!(*first.lock().unwrap(), [Effort::Max]);
+        assert_eq!(*second.lock().unwrap(), [Effort::Minimal]);
     }
 
     #[test]
