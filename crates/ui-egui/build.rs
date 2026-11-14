@@ -31,9 +31,46 @@ fn main() {
     if let Some(error) = &plan.error {
         println!("cargo::error={error}");
     }
-    let out = PathBuf::from(std::env::var_os("OUT_DIR").unwrap_or_default()).join("craft_fonts.rs");
+    let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap_or_default());
+    let out = out_dir.join("craft_fonts.rs");
     if let Err(e) = std::fs::write(&out, &plan.source) {
         println!("cargo::error=writing {}: {e}", out.display());
+    }
+    join_catalogs(&PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap_or_default()).join("src/i18n"), &out_dir.join("i18n"));
+}
+
+/// Joins each language's catalog files (`src/i18n/<code>/*.tsv`, in name order) into
+/// `<out>/<code>.tsv`, which `i18n.rs` embeds. A PR adds its strings in a file of its own, so two
+/// PRs that add strings don't touch the same lines (#1465).
+pub fn join_catalogs(src: &Path, out: &Path) {
+    println!("cargo::rerun-if-changed={}", src.display());
+    let Ok(dirs) = std::fs::read_dir(src) else { return println!("cargo::error=can't read {}", src.display()) };
+    if let Err(e) = std::fs::create_dir_all(out) {
+        return println!("cargo::error=making {}: {e}", out.display());
+    }
+    for dir in dirs.flatten().map(|e| e.path()).filter(|p| p.is_dir()) {
+        let mut files: Vec<PathBuf> =
+            std::fs::read_dir(&dir).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "tsv")).collect();
+        files.sort();
+        let mut joined = String::new();
+        for file in &files {
+            // The folder's scan sees a new or changed file; a listed file that's gone sees a removal.
+            println!("cargo::rerun-if-changed={}", file.display());
+            match std::fs::read_to_string(file) {
+                Ok(text) => {
+                    joined.push_str(&text);
+                    if !text.ends_with('\n') {
+                        joined.push('\n');
+                    }
+                }
+                Err(e) => println!("cargo::error=reading {}: {e}", file.display()),
+            }
+        }
+        let Some(code) = dir.file_name() else { continue };
+        let target = out.join(code).with_extension("tsv");
+        if let Err(e) = std::fs::write(&target, joined) {
+            println!("cargo::error=writing {}: {e}", target.display());
+        }
     }
 }
 
