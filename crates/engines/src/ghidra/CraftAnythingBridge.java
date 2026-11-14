@@ -29,6 +29,7 @@ import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.mem.MemoryBlock;
@@ -399,11 +400,8 @@ public class CraftAnythingBridge extends GhidraScript {
         if (range == null) {
             MemoryBlock block = currentProgram.getMemory().getBlock(f.getEntryPoint());
             if (block == null) return null;
-            Address hi = block.getEnd();
-            for (Function g : currentProgram.getFunctionManager().getFunctions(f.getEntryPoint().next(), true)) {
-                hi = g.getEntryPoint();
-                break;
-            }
+            FunctionIterator next = currentProgram.getFunctionManager().getFunctions(f.getEntryPoint().next(), true);
+            Address hi = next.hasNext() ? next.next().getEntryPoint() : block.getEnd();
             range = new Address[] {f.getEntryPoint(), hi};
         }
         Sweep s = sweeps.get(range[0]);
