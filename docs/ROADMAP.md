@@ -322,6 +322,10 @@ only when it's green and a maintainer has fully reviewed it, code as well as wor
       `self_cli_path` no longer found the CLI and the two rebuild tests that start it failed on
       `main` and every pull request. It now finds the CLI from that folder too
       — claimed: bflatastic, branch bugfix/r5.2-cli-in-new-build-dir
+- [ ] Every PR that adds UI strings appends them to the end of all 14 catalogs, so any two such
+      PRs conflict once one merges (#1465): one folder per language, each PR adding its own
+      file there, joined at build time
+      — claimed: justinjohn0306, branch chore/r5.2-catalog-folders
 
 ### R5.3 A builder that can't make progress stops
 Owner: open · Status: todo
