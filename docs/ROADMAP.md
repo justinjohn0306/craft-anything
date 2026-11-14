@@ -1613,6 +1613,10 @@ Gaps found while using the app for real projects.
       to think harder (#1813): Settings → AI and `ai effort` offer its reasoning levels, sent
       only once the person picks one
       — claimed: justinjohn0306, branch bugfix/r2.9-api-reasoning-effort
+- [ ] A Rust build starts on a computer without Cargo and spends a whole builder turn before
+      its build check says cargo is missing (#1837): check for the stack's build program
+      before the build starts, and say how to get it or to ask for another stack
+      — claimed: justinjohn0306, branch bugfix/r2.9-check-cargo-before-build
 
 ### R2.10 Pinned builds
 Owner: maintainers · Status: in progress
