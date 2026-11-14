@@ -796,6 +796,10 @@ Owner: open · Status: in progress
       starts or at the first entry that isn't an instruction start there, and writes the override.
       Live on Ghidra 12.1.4: a Rust async function that timed out after 15 min decompiles in 16 s
       (121 tables) — claimed: justinjohn0306, branch `bugfix/r1.5-bound-unguarded-jump-tables`
+- [ ] The jump-table sweep finds the next function with a loop that always breaks on its first
+      pass, which fails SonarCloud's reliability gate on `main` (java:S1751): take the first
+      function from the iterator instead — claimed: justinjohn0306, branch
+      `bugfix/r1.5-ghidra-sweep-next-function`
 - [ ] More pins once their hashes are checked against the publisher: Chromium (no published
       checksums found yet), Rizin for Linux (the tar.xz unpacks to ~800 MB, so it needs streaming
       extraction) and macOS (a .pkg)
