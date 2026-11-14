@@ -206,13 +206,20 @@ fn opencode_go_models_base(base: &str) -> String {
 /// The reasoning levels OpenAI's API takes, which OpenAI-compatible services follow.
 pub const OPENAI_EFFORTS: [Effort; 6] = [Effort::None, Effort::Minimal, Effort::Low, Effort::Medium, Effort::High, Effort::Xhigh];
 
+/// The levels every Gemini model takes through its OpenAI-compatible API: `xhigh` is for one
+/// model only, and `none` can't turn reasoning off on 2.5 Pro, 3 or 4 (Google's OpenAI
+/// compatibility page). shortcut: not per model, so a model's extra level isn't offered;
+/// add a per-model table if someone needs `none` or `xhigh` on Gemini.
+pub const GEMINI_EFFORTS: [Effort; 4] = [Effort::Minimal, Effort::Low, Effort::Medium, Effort::High];
+
 /// The effort levels an AI can be set to (Settings → AI): every Claude level for the Claude API
 /// and Claude Code, OpenAI's for the OpenAI-style APIs (#1813), none for the others.
 pub fn effort_levels(config: &BackendConfig) -> &'static [Effort] {
     match config.kind {
         BackendKind::Anthropic => &Effort::ALL,
         BackendKind::AgentCli if config.model == "claude-code" => &Effort::ALL,
-        BackendKind::Openai | BackendKind::Openrouter | BackendKind::Gemini | BackendKind::OpenaiCompatible => &OPENAI_EFFORTS,
+        BackendKind::Gemini => &GEMINI_EFFORTS,
+        BackendKind::Openai | BackendKind::Openrouter | BackendKind::OpenaiCompatible => &OPENAI_EFFORTS,
         BackendKind::AgentCli => &[],
     }
 }

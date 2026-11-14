@@ -92,7 +92,8 @@ pub enum AiCommand {
         default: bool,
     },
     /// Set how hard a backend thinks: low, medium, high, xhigh or max for the Claude API or Claude
-    /// Code; none, minimal, low, medium, high or xhigh for an OpenAI-style API, which is sent no
+    /// Code; none, minimal, low, medium, high or xhigh for an OpenAI-style API (Gemini: minimal
+    /// to high), which is sent no
     /// level until one is set. `default` goes back to the usual; leave it out to see the choices.
     Effort { name: String, level: Option<String> },
     /// Send a tiny request and report latency.

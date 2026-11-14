@@ -712,6 +712,9 @@ fn an_openai_style_ais_effort_is_sent_only_once_chosen() {
         assert!(h.set_effort("Box", None).unwrap());
         assert_eq!(effort(&h), None);
     }
+    // Gemini is offered only the levels every Gemini model takes.
+    let gemini = BackendConfig { name: "G".into(), kind: BackendKind::Gemini, model: "gemini-2.5-pro".into(), base_url: None, ssh_host: None, enabled: true };
+    assert_eq!(crate::effort_levels(&gemini), [Effort::Minimal, Effort::Low, Effort::Medium, Effort::High]);
 }
 
 #[test]
