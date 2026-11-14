@@ -44,19 +44,30 @@ fn main() {
 /// PRs that add strings don't touch the same lines (#1465).
 pub fn join_catalogs(src: &Path, out: &Path) {
     println!("cargo::rerun-if-changed={}", src.display());
-    let Ok(dirs) = std::fs::read_dir(src) else { return println!("cargo::error=can't read {}", src.display()) };
+    let dirs = match entries(src) {
+        Ok(paths) => paths.into_iter().filter(|p| p.is_dir()),
+        Err(e) => return println!("cargo::error=reading {}: {e}", src.display()),
+    };
+    // Start from nothing, so a language whose folder was removed doesn't keep its old catalog.
+    if let Err(e) = std::fs::remove_dir_all(out).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(()) } else { Err(e) }) {
+        return println!("cargo::error=clearing {}: {e}", out.display());
+    }
     if let Err(e) = std::fs::create_dir_all(out) {
         return println!("cargo::error=making {}: {e}", out.display());
     }
-    for dir in dirs.flatten().map(|e| e.path()).filter(|p| p.is_dir()) {
-        let mut files: Vec<PathBuf> =
-            std::fs::read_dir(&dir).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "tsv")).collect();
-        files.sort();
+    for dir in dirs {
+        let files = match entries(&dir) {
+            Ok(paths) => paths.into_iter().filter(|p| p.extension().is_some_and(|x| x == "tsv")),
+            Err(e) => {
+                println!("cargo::error=reading {}: {e}", dir.display());
+                continue;
+            }
+        };
         let mut joined = String::new();
-        for file in &files {
+        for file in files {
             // The folder's scan sees a new or changed file; a listed file that's gone sees a removal.
             println!("cargo::rerun-if-changed={}", file.display());
-            match std::fs::read_to_string(file) {
+            match std::fs::read_to_string(&file) {
                 Ok(text) => {
                     joined.push_str(&text);
                     if !text.ends_with('\n') {
@@ -72,6 +83,13 @@ pub fn join_catalogs(src: &Path, out: &Path) {
             println!("cargo::error=writing {}: {e}", target.display());
         }
     }
+}
+
+/// A folder's entries in name order; an entry that can't be read is an error, not a gap.
+fn entries(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut paths = std::fs::read_dir(dir)?.map(|e| e.map(|e| e.path())).collect::<std::io::Result<Vec<_>>>()?;
+    paths.sort();
+    Ok(paths)
 }
 
 /// What a build does about craft-fonts, decided from its inputs alone.

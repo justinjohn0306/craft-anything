@@ -115,7 +115,9 @@ pub fn check(root: &Path) -> bool {
 
 /// A language's catalog files (`i18n/<code>/*.tsv`), joined in name order as `build.rs` joins them.
 fn catalog_text(dir: &Path) -> Option<String> {
-    let mut files: Vec<_> = std::fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "tsv")).collect();
+    // An entry that can't be read fails the check rather than leaving a file out.
+    let mut files = std::fs::read_dir(dir).ok()?.map(|e| e.map(|e| e.path())).collect::<std::io::Result<Vec<_>>>().ok()?;
+    files.retain(|p| p.extension().is_some_and(|x| x == "tsv"));
     files.sort();
     let mut text = String::new();
     for file in files {

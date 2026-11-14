@@ -16,8 +16,16 @@ fn a_languages_catalog_files_are_joined_in_name_order() {
     std::fs::write(src.path().join("de/core.tsv"), "# de\nSettings\tEinstellungen\n").unwrap();
     std::fs::write(src.path().join("de/notes.txt"), "not a catalog\tnope\n").unwrap();
     std::fs::write(src.path().join("awaiting.txt"), "Budget\n").unwrap();
+    // A catalog left from a build when a language's folder still existed.
+    std::fs::write(
+        out.path().join("fr.tsv"),
+        "Settings	Paramètres
+",
+    )
+    .unwrap();
     build::join_catalogs(src.path(), out.path());
     let joined = std::fs::read_to_string(out.path().join("de.tsv")).unwrap();
     assert_eq!(joined, "# de\nSettings\tEinstellungen\nBudget\tBudget\n");
     assert!(!out.path().join("awaiting.tsv").exists(), "only folders are catalogs");
+    assert!(!out.path().join("fr.tsv").exists(), "a removed language's old catalog is cleared");
 }
