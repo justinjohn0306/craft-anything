@@ -4504,3 +4504,15 @@ fn a_later_run_opens_the_projects_program_again_for_the_builder() {
         }
     }
 }
+
+#[test]
+fn a_new_build_stops_before_any_turn_when_its_stacks_program_is_missing() {
+    let err = missing_program_stop("Rust + egui (eframe)", |_| false).unwrap_err();
+    assert!(err.message.contains("cargo") && err.remediation.as_deref().is_some_and(|r| r.contains("rustup.rs")), "{err:?}");
+    assert!(missing_program_stop("Rust + egui (eframe)", |p| p == "cargo").is_ok());
+    assert!(missing_program_stop("Python", |_| false).is_ok(), "a stack with no program of its own isn't checked");
+    // Every stack built with Cargo says so, and how to get it.
+    for s in stacks::catalogue().iter().filter(|s| s.name.starts_with("Rust") || s.name == "Bevy") {
+        assert_eq!(stacks::missing_program(&s.name, |_| false).map(|(p, from)| (p, !from.is_empty())), Some(("cargo", true)), "{}", s.name);
+    }
+}

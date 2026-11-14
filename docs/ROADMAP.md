@@ -1613,10 +1613,16 @@ Gaps found while using the app for real projects.
       to think harder (#1813): Settings → AI and `ai effort` offer its reasoning levels, sent
       only once the person picks one
       — claimed: justinjohn0306, branch bugfix/r2.9-api-reasoning-effort
-- [ ] A Rust build starts on a computer without Cargo and spends a whole builder turn before
-      its build check says cargo is missing (#1837): check for the stack's build program
-      before the build starts, and say how to get it or to ask for another stack
+- [x] A Rust build starts on a computer without Cargo and spends a whole builder turn before
+      its build check says cargo is missing (#1837): a new build whose stack names a program
+      (`program` in stacks.toml) stops before any turn when it isn't found, saying how to get
+      it or to start again with another stack
       — claimed: justinjohn0306, branch bugfix/r2.9-check-cargo-before-build
+- [ ] A project moved to another stack mid-build keeps its recorded stack (only package.json
+      updates it), and the build check runs `cargo build` whenever app/Cargo.toml is there, so
+      a Rust project rewritten in Python is still checked with Cargo until the old manifest is
+      moved out (#1837): record the stack from what was built for every toolchain, and check
+      with that
 
 ### R2.10 Pinned builds
 Owner: maintainers · Status: in progress
