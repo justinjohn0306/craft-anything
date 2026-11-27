@@ -274,8 +274,12 @@ pub fn frameless_field(resp: &Response) {
 /// Cut, Copy and Paste on a right-click in any text box (#2488): egui's text boxes have no menu of
 /// their own, so with the mouse alone nothing could be pasted, an API key included. Run once a
 /// frame, after the screens. A choice gives the box its focus back and asks the window for the
-/// clipboard action, which egui then applies to it.
+/// clipboard action, which egui then applies to it. Not in a browser: its eframe drops these
+/// requests, and there the browser's own shortcuts work.
 pub fn text_box_menu(ctx: &egui::Context) {
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
     let key = egui::Id::new("text-box-menu");
     if ctx.input(|i| i.pointer.secondary_clicked())
         && let Some(target) = text_box_under_pointer(ctx)
