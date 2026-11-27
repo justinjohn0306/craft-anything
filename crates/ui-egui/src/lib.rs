@@ -2207,6 +2207,7 @@ impl CraftApp {
         activity_box::windows(self, &ctx);
         self.toasts(&ctx);
         widgets::text_focus_ring(&ctx);
+        widgets::text_box_menu(&ctx);
         self.drop_overlay(&ctx);
         titlebar::window_edge(&ctx);
         titlebar::resize_edges(&ctx);

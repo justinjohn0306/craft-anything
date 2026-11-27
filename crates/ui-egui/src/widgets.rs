@@ -271,6 +271,48 @@ pub fn frameless_field(resp: &Response) {
     resp.ctx.data_mut(|d| d.insert_temp(resp.id.with("frameless-field"), true));
 }
 
+/// Cut, Copy and Paste on a right-click in any text box (#2488): egui's text boxes have no menu of
+/// their own, so with the mouse alone nothing could be pasted, an API key included. Run once a
+/// frame, after the screens. A choice gives the box its focus back and asks the window for the
+/// clipboard action, which egui then applies to it.
+pub fn text_box_menu(ctx: &egui::Context) {
+    let key = egui::Id::new("text-box-menu");
+    if ctx.input(|i| i.pointer.secondary_clicked())
+        && let Some(target) = text_box_under_pointer(ctx)
+    {
+        ctx.data_mut(|d| d.insert_temp(key, target));
+    }
+    let Some(target) = ctx.data(|d| d.get_temp::<egui::Id>(key)) else { return };
+    let Some(response) = ctx.read_response(target) else {
+        ctx.data_mut(|d| d.remove::<egui::Id>(key));
+        return;
+    };
+    let shown = response.context_menu(|ui| {
+        for (label, command) in
+            [("Cut", egui::ViewportCommand::RequestCut), ("Copy", egui::ViewportCommand::RequestCopy), ("Paste", egui::ViewportCommand::RequestPaste)]
+        {
+            if menu_item(ui, false, tr(label)).clicked() {
+                ui.ctx().memory_mut(|m| m.request_focus(target));
+                ui.ctx().send_viewport_cmd(command);
+                ui.close();
+            }
+        }
+    });
+    if shown.is_none() && !response.secondary_clicked() {
+        ctx.data_mut(|d| d.remove::<egui::Id>(key));
+    }
+}
+
+/// The text box under the pointer, on the layer the pointer is over.
+fn text_box_under_pointer(ctx: &egui::Context) -> Option<egui::Id> {
+    let pos = ctx.pointer_interact_pos()?;
+    let layer = ctx.layer_id_at(pos)?;
+    let under: Vec<egui::Id> =
+        ctx.viewport(|v| v.this_pass.widgets.get_layer(layer).filter(|w| w.enabled && w.interact_rect.contains(pos)).map(|w| w.id).collect());
+    // Every text box keeps its state under its own id; nothing else does.
+    under.into_iter().rev().find(|id| egui::text_edit::TextEditState::load(ctx, *id).is_some())
+}
+
 /// The focus edge of whichever text field is being typed in: the same hairline and halo as
 /// [`focus_ring`], faded in and out. Drawn once a frame, after the screens, because a field's
 /// own frame can't know it has focus.
@@ -881,6 +923,36 @@ pub fn open_log_button(ui: &mut Ui, path: &std::path::Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #2488: a right-click on a text box offers Paste, which gives the box its focus and asks the
+    /// window for the clipboard's text; a right-click elsewhere offers nothing.
+    #[test]
+    fn a_right_click_on_a_text_box_offers_paste() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(400.0, 300.0)).build_ui_state(
+            |ui, text: &mut String| {
+                ui.label("Not a box");
+                ui.add(egui::TextEdit::singleline(text).id(egui::Id::new("key")).hint_text("Key"));
+                text_box_menu(ui.ctx());
+            },
+            String::new(),
+        );
+        h.run();
+        h.get_by_label("Not a box").click_secondary();
+        h.run();
+        assert!(h.query_by_label("Paste").is_none(), "only a text box has the menu");
+        h.get_by_role(egui::accesskit::Role::TextInput).click_secondary();
+        h.run();
+        h.get_by_label("Paste").click();
+        let mut asked = false;
+        for _ in 0..3 {
+            h.step();
+            asked |= h.output().viewport_output.values().any(|v| v.commands.contains(&egui::ViewportCommand::RequestPaste));
+        }
+        assert!(asked, "the window is asked for the clipboard's text");
+        assert!(h.ctx.memory(|m| m.has_focus(egui::Id::new("key"))), "the box has the focus the paste goes to");
+        assert!(h.query_by_label("Paste").is_none(), "the menu closes");
+    }
     use std::time::Duration;
 
     /// The wait before the next frame a settled screen drawn by `add` asks for.
