@@ -941,9 +941,7 @@ impl AgentAdapter for Codex {
     /// Ask the selected CLI, not its auth file or keychain; discard raw status output.
     fn signed_in(&self, program: &str) -> Option<bool> {
         // `login status` knows only an OpenAI sign-in; another provider uses its own key (#2490).
-        let home =
-            std::env::var_os("CODEX_HOME").filter(|v| !v.is_empty()).map(std::path::PathBuf::from).or_else(|| dirs::home_dir().map(|h| h.join(".codex")));
-        if home.and_then(|h| std::fs::read_to_string(h.join("config.toml")).ok()).is_some_and(|c| codex_uses_another_provider(&c)) {
+        if codex_has_another_provider() {
             return None;
         }
         let out = Process::new(program).args(["login", "status"]).timeout(Duration::from_secs(10)).stdout_cap(16 * 1024).run().ok()?;
@@ -951,6 +949,9 @@ impl AgentAdapter for Codex {
     }
 
     fn sign_in_fix(&self) -> Option<String> {
+        if codex_has_another_provider() {
+            return Some("Codex's config.toml picks another model provider: check that provider's API key, then test it again in Settings → AI.".into());
+        }
         Some("Run the selected Codex program with `login` in a terminal, choose Sign in with ChatGPT, then test it again in Settings → AI.".into())
     }
 
@@ -1125,6 +1126,12 @@ fn codex_models(json: &str) -> Vec<String> {
     c.models.retain(|m| m.visibility == "list" && !m.slug.trim().is_empty());
     c.models.sort_by_key(|m| m.priority);
     c.models.into_iter().map(|m| m.slug).collect()
+}
+
+/// Whether the `config.toml` in Codex's home (`$CODEX_HOME`, else `~/.codex`) picks another provider.
+fn codex_has_another_provider() -> bool {
+    let home = std::env::var_os("CODEX_HOME").filter(|v| !v.is_empty()).map(std::path::PathBuf::from).or_else(|| dirs::home_dir().map(|h| h.join(".codex")));
+    home.and_then(|h| std::fs::read_to_string(h.join("config.toml")).ok()).is_some_and(|c| codex_uses_another_provider(&c))
 }
 
 /// Whether Codex's `config.toml` picks a model provider other than OpenAI, in the profile it
